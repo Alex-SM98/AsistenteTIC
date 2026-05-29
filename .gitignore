@@ -1,0 +1,19 @@
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# Entorno virtual
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Archivos de sistema
+.DS_Store
+*.log
+
+# Archivos de test generados
+test_sam_output.jpg

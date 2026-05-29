@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CASE — Panel de Control</title>
+  <style>
+    /* ── Reset y base ───────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    header h1 {
+      font-size: 2.2rem;
+      letter-spacing: 6px;
+      color: #ffffff;
+    }
+    header p {
+      color: #888;
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+
+    /* ── Layout principal ───────────────────── */
+    .main {
+      display: flex;
+      gap: 24px;
+      width: 100%;
+      max-width: 1100px;
+      align-items: flex-start;
+    }
+
+    /* ── Stream de vídeo ────────────────────── */
+    .video-wrapper {
+      flex: 1;
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .video-wrapper img {
+      width: 100%;
+      display: block;
+    }
+
+    /* ── Panel lateral ──────────────────────── */
+    .panel {
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── Tarjetas de información ────────────── */
+    .card {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card label {
+      font-size: 0.7rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ffffff;
+      min-height: 40px;
+    }
+    .card .value.small {
+      font-size: 1.1rem;
+      word-break: break-all;
+    }
+
+    /* ── Botones de modo ────────────────────── */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn {
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    /* Colores de botones — todos blanco/negro */
+    .btn-lse      { background: #ffffff; color: #000000; }
+    .btn-semaforo { background: #e0e0e0; color: #000000; }
+    .btn-stop     { background: #2a2a2a; color: #ffffff; border: 1px solid #444; }
+    .btn-clear    { background: #1a1a1a; color: #aaa;    border: 1px solid #333; }
+    .btn-voice    { background: #1a1a1a; color: #aaa;    border: 1px solid #333; }
+
+    /* Botón activo resaltado */
+    .btn.active   { outline: 2px solid #ffffff; outline-offset: 2px; }
+
+    /* ── Indicador de modo ──────────────────── */
+    .mode-badge {
+      text-align: center;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+      background: #1a1a1a;
+      color: #555;
+      border: 1px solid #222;
+      text-transform: uppercase;
+    }
+    .mode-badge.active { color: #ffffff; border-color: #555; background: #222; }
+
+    /* ── FPS badge ──────────────────────────── */
+    .fps { font-size: 0.75rem; color: #444; text-align: right; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>CASE</h1>
+    <p>Asistente Inteligente Accesible — Panel de Control</p>
+  </header>
+
+  <div class="main">
+
+    <!-- Stream de vídeo en directo desde la Pi -->
+    <div class="video-wrapper">
+      <img src="/video_feed" alt="Stream CASE" />
+    </div>
+
+    <!-- Panel de control lateral -->
+    <div class="panel">
+
+      <!-- Indicador de modo activo -->
+      <div class="mode-badge" id="mode-badge">STANDBY</div>
+
+      <!-- Botones para cambiar modo -->
+      <div class="btn-group">
+        <button class="btn btn-lse"      onclick="setMode('lse')">
+          🤟 Modo LSE
+        </button>
+        <button class="btn btn-semaforo" onclick="setMode('semaforos')">
+          🚦 Modo Semáforos
+        </button>
+        <button class="btn btn-stop"     onclick="setMode('stop')">
+          ⏹ Stop
+        </button>
+      </div>
+
+      <!-- Letra detectada (modo LSE) -->
+      <div class="card" id="card-letter">
+        <label>Letra detectada</label>
+        <div class="value" id="letter-value">—</div>
+      </div>
+
+      <!-- Texto acumulado (modo LSE) -->
+      <div class="card">
+        <label>Palabra acumulada</label>
+        <div class="value small" id="word-value">—</div>
+        <button class="btn btn-clear" style="margin-top:12px; padding:8px;"
+                onclick="clearText()">
+          🗑 Limpiar texto
+        </button>
+      </div>
+
+      <!-- Detección semáforos -->
+      <div class="card" id="card-detection">
+        <label>Semáforo detectado</label>
+        <div class="value" id="detection-value">—</div>
+      </div>
+
+      <!-- Voz -->
+      <button class="btn btn-voice" onclick="toggleVoice()" id="btn-voice">
+        🔊 Voz: ON
+      </button>
+
+      <!-- FPS -->
+      <div class="fps" id="fps-display">FPS: —</div>
+
+    </div>
+  </div>
+
+  <script>
+    // ── Estado local del panel ────────────────
+    let currentMode = null;
+
+    // ── Cambiar modo ──────────────────────────
+    async function setMode(mode) {
+      const res = await fetch('/set_mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        currentMode = mode === 'stop' ? null : mode;
+        updateModeUI(currentMode);
+      }
+    }
+
+    // ── Limpiar texto acumulado ───────────────
+    async function clearText() {
+      await fetch('/clear_text', { method: 'POST' });
+      document.getElementById('word-value').textContent = '—';
+    }
+
+    // ── Activar/desactivar voz ────────────────
+    async function toggleVoice() {
+      const res = await fetch('/toggle_voice', { method: 'POST' });
+      const data = await res.json();
+      document.getElementById('btn-voice').textContent =
+        data.voice ? '🔊 Voz: ON' : '🔇 Voz: OFF';
+    }
+
+    // ── Actualizar UI según modo ──────────────
+    function updateModeUI(mode) {
+      const badge = document.getElementById('mode-badge');
+      badge.textContent = mode ? mode.toUpperCase() : 'STANDBY';
+      badge.className = 'mode-badge' + (mode ? ' active' : '');
+
+      // Mostrar/ocultar tarjetas según modo
+      document.getElementById('card-letter').style.display =
+        mode === 'lse' ? 'block' : 'none';
+      document.getElementById('card-detection').style.display =
+        mode === 'semaforos' ? 'block' : 'none';
+    }
+
+    // ── Polling de estado cada segundo ───────
+    // El Mac consulta al servidor el estado actual
+    // y actualiza el panel sin recargar la página
+    async function pollStatus() {
+      try {
+        const res = await fetch('/status');
+        const data = await res.json();
+
+        // FPS
+        document.getElementById('fps-display').textContent =
+          `FPS: ${data.fps}`;
+
+        // Letra LSE
+        document.getElementById('letter-value').textContent =
+          data.letter ? `${data.letter}  (${data.confidence}%)` : '—';
+
+        // Palabra acumulada
+        document.getElementById('word-value').textContent =
+          data.accumulated_text || '—';
+
+        // Semáforo
+        const det = data.detection;
+        document.getElementById('detection-value').textContent =
+          det === 'red' ? '🔴 ROJO — STOP' :
+          det === 'green' ? '🟢 VERDE — PASA' : '—';
+
+        // Sincronizar modo si cambió en el servidor
+        if (data.mode !== currentMode) {
+          currentMode = data.mode;
+          updateModeUI(currentMode);
+        }
+
+      } catch (e) {
+        // Si la Pi no responde, no hacer nada
+      }
+    }
+
+    // Actualizar estado cada 1 segundo
+    setInterval(pollStatus, 1000);
+
+    // Inicializar UI
+    updateModeUI(null);
+  </script>
+
+</body>
+</html>
